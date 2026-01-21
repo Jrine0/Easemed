@@ -64,7 +64,7 @@
 //   const [address, setAddress] = useState("");
 //   const [country, setCountry] = useState<string | undefined>(undefined);
 //   const [userType, setUserType] = useState<"hospital" | "vendor">("hospital");
-//   const [selectedRole, setSelectedRole] = useState(""); // No default role
+//   const [selectedRole, setSelectedRole] = useState("");
 
 //   const router = useRouter();
 //   const supabase = createClient();
@@ -208,48 +208,54 @@
 //             <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
 //               {/* 1. Full Name */}
 //               <div className="space-y-2">
-//                 <Label>
+//                 <Label htmlFor="fullname">
 //                   User Full Name <span className="text-red-500">*</span>
 //                 </Label>
 //                 <Input
+//                   id="fullname"
 //                   required
-//                   placeholder="Name of the user"
+//                   placeholder="e.g. Dr. Sarah Miller"
 //                   value={fullName}
 //                   onChange={(e) => setFullName(e.target.value)}
 //                   className="bg-neutral-50 border-neutral-200"
+//                   autoComplete="name"
 //                 />
 //               </div>
 
 //               {/* 2. Organization Name */}
 //               <div className="space-y-2">
-//                 <Label>
+//                 <Label htmlFor="orgname">
 //                   {userType === "hospital" ? "Hospital Name" : "Company Name"}{" "}
 //                   <span className="text-red-500">*</span>
 //                 </Label>
 //                 <Input
+//                   id="orgname"
 //                   required
 //                   placeholder={
 //                     userType === "hospital"
-//                       ? "e.g. Name of the Hospital"
-//                       : "e.g. Name of the Company"
+//                       ? "e.g. Charité Berlin"
+//                       : "e.g. Bayer AG"
 //                   }
 //                   value={orgName}
 //                   onChange={(e) => setOrgName(e.target.value)}
 //                   className="bg-neutral-50 border-neutral-200"
+//                   autoComplete="organization"
 //                 />
 //               </div>
 
 //               {/* 3. Address */}
 //               <div className="space-y-2">
-//                 <Label>
+//                 <Label htmlFor="address">
 //                   Full Address <span className="text-red-500">*</span>
 //                 </Label>
 //                 <Input
+//                   id="address"
 //                   required
-//                   placeholder="Enter your full address"
+//                   placeholder="e.g. Charitéplatz 1, 10117 Berlin"
 //                   value={address}
 //                   onChange={(e) => setAddress(e.target.value)}
 //                   className="bg-neutral-50 border-neutral-200"
+//                   autoComplete="street-address"
 //                 />
 //               </div>
 
@@ -262,7 +268,7 @@
 //                   <SelectTrigger className="bg-neutral-50 border-neutral-200">
 //                     <SelectValue placeholder="Select EU Country" />
 //                   </SelectTrigger>
-//                   <SelectContent className="max-h-50">
+//                   <SelectContent className="z-50 max-h-52 w-[var(--radix-select-trigger-width)] overflow-y-auto bg-white text-neutral-900 border border-neutral-200 shadow-lg">
 //                     {EU_COUNTRIES.map((c) => (
 //                       <SelectItem key={c} value={c}>
 //                         {c}
@@ -282,7 +288,7 @@
 //                     <SelectTrigger className="bg-neutral-50 border-neutral-200">
 //                       <SelectValue placeholder="Select Your Role" />
 //                     </SelectTrigger>
-//                     <SelectContent>
+//                     <SelectContent className=" z-50 max-h-52 w-[var(--radix-select-trigger-width)] overflow-y-auto  bg-white text-neutral-900 border border-neutral-200 shadow-lg">
 //                       <SelectItem value="cpo">
 //                         Chief Procurement Officer
 //                       </SelectItem>
@@ -307,29 +313,33 @@
 
 //           {/* Email & Password (Always Visible) */}
 //           <div className="space-y-2">
-//             <Label>
+//             <Label htmlFor="email">
 //               Email <span className="text-red-500">*</span>
 //             </Label>
 //             <Input
+//               id="email"
 //               required
 //               type="email"
-//               placeholder="Organisation mail"
+//               placeholder="e.g. name@organization.eu"
 //               value={email}
 //               onChange={(e) => setEmail(e.target.value)}
 //               className="bg-neutral-50 border-neutral-200"
+//               autoComplete="email"
 //             />
 //           </div>
 
 //           <div className="space-y-2">
-//             <Label>
+//             <Label htmlFor="password">
 //               Password <span className="text-red-500">*</span>
 //             </Label>
 //             <Input
+//               id="password"
 //               required
 //               type="password"
 //               value={password}
 //               onChange={(e) => setPassword(e.target.value)}
 //               className="bg-neutral-50 border-neutral-200"
+//               autoComplete={isSignUp ? "new-password" : "current-password"}
 //             />
 //           </div>
 
@@ -656,21 +666,18 @@ export default function LoginPage() {
                     <SelectTrigger className="bg-neutral-50 border-neutral-200">
                       <SelectValue placeholder="Select Your Role" />
                     </SelectTrigger>
-                    <SelectContent className=" z-50 max-h-52 w-[var(--radix-select-trigger-width)] overflow-y-auto  bg-white text-neutral-900 border border-neutral-200 shadow-lg">
+                    <SelectContent className="z-50 max-h-52 w-[var(--radix-select-trigger-width)] overflow-y-auto bg-white text-neutral-900 border border-neutral-200 shadow-lg">
                       <SelectItem value="cpo">
-                        Chief Procurement Officer
+                        Chief Procurement Officer (CPO)
                       </SelectItem>
-                      <SelectItem value="sourcing_director">
-                        Director of Sourcing
+                      <SelectItem value="head_of_department">
+                        Head of Department (HOD)
                       </SelectItem>
                       <SelectItem value="procurement_analyst">
                         Procurement Analyst
                       </SelectItem>
-                      <SelectItem value="contract_specialist">
-                        Contract Specialist
-                      </SelectItem>
-                      <SelectItem value="ops_director">
-                        Director of Operations
+                      <SelectItem value="sourcing_director">
+                        Director of Sourcing
                       </SelectItem>
                     </SelectContent>
                   </Select>

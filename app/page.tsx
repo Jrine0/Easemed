@@ -165,7 +165,7 @@ export default function LandingPage() {
       {/* --- Footer --- */}
       <footer className="py-8 border-t border-neutral-200 bg-white">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500">
-          <p>© 2024 Easemed Procurement Systems. All rights reserved.</p>
+          <p>© 2026 Easemed Procurement Systems. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <a href="#" className="hover:text-neutral-900">
               Privacy Policy
