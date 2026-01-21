@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Truck, Package, Calendar, Hash, Euro, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { Truck, Package, Calendar, Hash, Euro, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { QuoteForm } from "@/components/QuoteForm";
+import { CsvManager } from "@/components/CsvManager";
 
+// --- Types ---
 type RequestItem = {
   id: string;
   sku: string;
@@ -34,6 +45,28 @@ type Profile = {
   country: string | null;
 };
 
+type InventoryItem = {
+  id: string;
+  sku: string;
+  item_name: string;
+  stock_quantity: number;
+  unit_price: number;
+};
+
+// New Type for Bids
+type BidItem = {
+  id: string;
+  amount: number;
+  delivery_date: string;
+  status: "pending" | "accepted" | "rejected";
+  created_at: string;
+  procurement_requests: {
+    item_name: string;
+    organization_name: string;
+    quantity: number;
+  };
+};
+
 export function VendorDashboard({
   marketplace,
   profile,
@@ -45,6 +78,91 @@ export function VendorDashboard({
     null,
   );
   const [isBidOpen, setIsBidOpen] = useState(false);
+
+  // Inventory State
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  // Bids State
+  const [myBids, setMyBids] = useState<BidItem[]>([]);
+
+  const supabase = createClient();
+
+  // --- Fetch Data on Mount ---
+  useEffect(() => {
+    const fetchVendorData = async () => {
+      if (!profile.email) return;
+
+      // 1. Get Vendor ID
+      const { data: vendor } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("email", profile.email)
+        .single();
+
+      if (vendor) {
+        // 2. Fetch Inventory
+        const { data: inventoryData } = await supabase
+          .from("vendor_inventory")
+          .select("*")
+          .eq("vendor_id", vendor.id);
+        if (inventoryData) setInventory(inventoryData);
+
+        // 3. Fetch Bids (With joined Request data)
+        const { data: bidsData } = await supabase
+          .from("bids")
+          .select(
+            `
+            *,
+            procurement_requests (
+              item_name,
+              organization_name,
+              quantity
+            )
+          `,
+          )
+          .eq("vendor_id", vendor.id)
+          .order("created_at", { ascending: false });
+
+        if (bidsData) setMyBids(bidsData as unknown as BidItem[]);
+      }
+    };
+    fetchVendorData();
+  }, [profile.email, supabase]);
+
+  // --- CSV Upload Handler ---
+  const handleInventoryUpload = async (data: any[]) => {
+    if (!profile.email) return;
+
+    const { data: vendor } = await supabase
+      .from("vendors")
+      .select("id")
+      .eq("email", profile.email)
+      .single();
+
+    if (!vendor) {
+      alert("Error: Vendor profile not found.");
+      return;
+    }
+
+    const formattedData = data.map((item) => ({
+      vendor_id: vendor.id,
+      sku: item.sku,
+      item_name: item.item_name,
+      stock_quantity: Number(item.stock_quantity),
+      unit_price: Number(item.unit_price),
+    }));
+
+    const { error } = await supabase
+      .from("vendor_inventory")
+      .insert(formattedData);
+
+    if (error) {
+      alert("Upload failed: " + error.message);
+    } else {
+      alert("Inventory uploaded successfully!");
+      window.location.reload();
+    }
+  };
 
   const openBidModal = (req: RequestItem) => {
     setBiddingRequest(req);
@@ -64,7 +182,7 @@ export function VendorDashboard({
               {marketplace.length}
             </p>
             <p className="text-xs text-indigo-600/80 mt-2">
-              Active RFQs available in {profile.country}
+              Active RFQs in {profile.country}
             </p>
           </CardContent>
         </Card>
@@ -75,9 +193,10 @@ export function VendorDashboard({
         <TabsList className="bg-neutral-100 p-1">
           <TabsTrigger value="marketplace">Live Marketplace</TabsTrigger>
           <TabsTrigger value="my-bids">My Active Bids</TabsTrigger>
-          <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+          <TabsTrigger value="inventory">Product Catalog</TabsTrigger>
         </TabsList>
 
+        {/* TAB 1: MARKETPLACE */}
         <TabsContent value="marketplace" className="mt-6">
           <div className="grid gap-4">
             {marketplace.length === 0 ? (
@@ -169,12 +288,124 @@ export function VendorDashboard({
           </div>
         </TabsContent>
 
-        <TabsContent value="my-bids">
-          <div className="p-12 border border-dashed border-neutral-200 rounded-xl text-center">
-            <p className="text-neutral-500">
-              Your bid history will appear here.
-            </p>
+        {/* TAB 2: MY BIDS (UPDATED) */}
+        <TabsContent value="my-bids" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-neutral-50">
+                  <TableRow>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Your Offer</TableHead>
+                    <TableHead>Delivery Date</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {myBids.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center p-8 text-neutral-500"
+                      >
+                        You haven't submitted any bids yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    myBids.map((bid) => (
+                      <TableRow key={bid.id}>
+                        <TableCell className="font-medium text-neutral-900">
+                          {bid.procurement_requests?.item_name ||
+                            "Unknown Item"}
+                        </TableCell>
+                        <TableCell>
+                          {bid.procurement_requests?.organization_name ||
+                            "Unknown Org"}
+                        </TableCell>
+                        <TableCell>€{bid.amount}</TableCell>
+                        <TableCell>{bid.delivery_date}</TableCell>
+                        <TableCell className="text-right">
+                          {bid.status === "pending" && (
+                            <Badge
+                              variant="outline"
+                              className="text-amber-600 bg-amber-50 border-amber-200"
+                            >
+                              Pending Review
+                            </Badge>
+                          )}
+                          {bid.status === "accepted" && (
+                            <Badge
+                              variant="outline"
+                              className="text-emerald-700 bg-emerald-50 border-emerald-200"
+                            >
+                              Accepted
+                            </Badge>
+                          )}
+                          {bid.status === "rejected" && (
+                            <Badge
+                              variant="outline"
+                              className="text-red-700 bg-red-50 border-red-200"
+                            >
+                              Rejected
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 3: INVENTORY */}
+        <TabsContent value="inventory">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">My Product Catalog</h2>
+            <CsvManager type="inventory" onUpload={handleInventoryUpload} />
           </div>
+
+          <Card>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inventory.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center p-8 text-neutral-500"
+                      >
+                        No items in catalog. Upload a CSV to get started.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    inventory.map((i) => (
+                      <TableRow key={i.id}>
+                        <TableCell className="font-mono text-xs">
+                          {i.sku}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {i.item_name}
+                        </TableCell>
+                        <TableCell>{i.stock_quantity}</TableCell>
+                        <TableCell>€{i.unit_price}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
